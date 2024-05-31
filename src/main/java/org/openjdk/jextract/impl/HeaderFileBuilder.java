@@ -32,6 +32,7 @@ import org.openjdk.jextract.Type;
 import org.openjdk.jextract.impl.DeclarationImpl.JavaName;
 
 import java.lang.invoke.MethodType;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -175,93 +176,90 @@ class HeaderFileBuilder extends ClassSourceBuilder {
         incrAlign();
         if (!isVarArg) {
             String holderClass = newHolderClassName(javaName);
-            appendLines(String.format("""
+            appendLines("""
 
-                private static class %s {
-                    public static final FunctionDescriptor DESC = %s;
+                private static class %1$s {
+                    public static final FunctionDescriptor DESC = %2$s;
 
-                    public static final MemorySegment ADDR = %s.findOrThrow("%s");
+                    public static final MemorySegment ADDR = %3$s.findOrThrow("%4$s");
 
                     public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
                 }
-                """,
-                holderClass, functionDescriptorString(1, decl.type()), runtimeHelperName(), lookupName(decl)));
+                """, holderClass, functionDescriptorString(1, decl.type()),
+                    runtimeHelperName(), lookupName(decl));
             appendBlankLine();
             emitDocComment(decl, "Function descriptor for:");
-            appendLines(String.format("""
-                public static FunctionDescriptor %s$descriptor() {
-                    return %s.DESC;
+            appendLines("""
+                public static FunctionDescriptor %1$s$descriptor() {
+                    return %2$s.DESC;
                 }
-                """, javaName, holderClass));
+                """, javaName, holderClass);
             appendBlankLine();
             emitDocComment(decl, "Downcall method handle for:");
-            appendLines(String.format("""
-                public static MethodHandle %s$handle() {
-                    return %s.HANDLE;
+            appendLines("""
+                public static MethodHandle %1$s$handle() {
+                    return %2$s.HANDLE;
                 }
-                """,
-                javaName, holderClass));
+                """, javaName, holderClass);
             appendBlankLine();
             emitDocComment(decl, "Address for:");
-            appendLines(String.format("""
-                public static MemorySegment %s$address() {
-                    return %s.ADDR;
+            appendLines("""
+                public static MemorySegment %1$s$address() {
+                    return %2$s.ADDR;
                 }
-                """,
-                javaName, holderClass));
+                """, javaName, holderClass);
             appendBlankLine();
             emitDocComment(decl);
-            appendLines(String.format("""
-            public static %s %s(%s) {
-                var mh$ = %s.HANDLE;
+            appendLines("""
+            public static %1$s %2$s(%3$s) {
+                var mh$ = %4$s.HANDLE;
                 try {
                     if (TRACE_DOWNCALLS) {
-                        traceDowncall(%s);
+                        traceDowncall(%5$s);
                     }
-                    %s mh$.invokeExact(%s);
+                    %6$s mh$.invokeExact(%7$s);
                 } catch (Throwable ex$) {
                    throw new AssertionError("should not reach here", ex$);
                 }
             }
-            """,
-            retType, javaName, paramExprs(declType, finalParamNames, isVarArg),
-            holderClass, traceArgList, returnWithCast, paramList));
+            """, retType, javaName,
+            paramExprs(declType, finalParamNames, isVarArg),
+            holderClass, traceArgList, returnWithCast, paramList);
         } else {
             String invokerClassName = newHolderClassName(javaName);
             String paramExprs = paramExprs(declType, finalParamNames, isVarArg);
             appendBlankLine();
             emitDocComment(decl, "Variadic invoker class for:");
-            appendLines(String.format("""
-                public static class %s {
-                    private static final FunctionDescriptor BASE_DESC = %s;
-                    private static final MemorySegment ADDR = %s.findOrThrow("%s");
+            appendLines("""
+                public static class %1$s {
+                    private static final FunctionDescriptor BASE_DESC = %2$s;
+                    private static final MemorySegment ADDR = %3$s.findOrThrow("%4$s");
 
                     private final MethodHandle handle;
                     private final FunctionDescriptor descriptor;
                     private final MethodHandle spreader;
 
-                    private %s(MethodHandle handle, FunctionDescriptor descriptor, MethodHandle spreader) {
+                    private %5$s(MethodHandle handle, FunctionDescriptor descriptor, MethodHandle spreader) {
                         this.handle = handle;
                         this.descriptor = descriptor;
                         this.spreader = spreader;
                     }
                 """,
-                invokerClassName, functionDescriptorString(2, decl.type()), runtimeHelperName(), lookupName(decl), invokerClassName));
+                invokerClassName, functionDescriptorString(2, decl.type()), runtimeHelperName(), lookupName(decl), invokerClassName);
             incrAlign();
             appendBlankLine();
             emitDocComment(decl, "Variadic invoker factory for:");
-            appendLines(String.format("""
-                public static %s makeInvoker(MemoryLayout... layouts) {
+            appendLines("""
+                public static %1$s makeInvoker(MemoryLayout... layouts) {
                     FunctionDescriptor desc$ = BASE_DESC.appendArgumentLayouts(layouts);
                     Linker.Option fva$ = Linker.Option.firstVariadicArg(BASE_DESC.argumentLayouts().size());
                     var mh$ = Linker.nativeLinker().downcallHandle(ADDR, desc$, fva$);
                     var spreader$ = mh$.asSpreader(Object[].class, layouts.length);
-                    return new %s(mh$, desc$, spreader$);
+                    return new %1$s(mh$, desc$, spreader$);
                 }
-                """,
-                invokerClassName, invokerClassName));
+                """, invokerClassName);
             decrAlign();
-            appendLines(String.format("""
+            appendLines("""
 
                     /**
                      * {@return the address}
@@ -284,12 +282,12 @@ class HeaderFileBuilder extends ClassSourceBuilder {
                         return descriptor;
                     }
 
-                    public %s apply(%s) {
+                    public %1$s apply(%2$s) {
                         try {
                             if (TRACE_DOWNCALLS) {
-                                traceDowncall(%s);
+                                traceDowncall(%3$s);
                             }
-                            %s spreader.invokeExact(%s);
+                            %4$s spreader.invokeExact(%5$s);
                         } catch(IllegalArgumentException | ClassCastException ex$)  {
                             throw ex$; // rethrow IAE from passing wrong number/type of args
                         } catch (Throwable ex$) {
@@ -297,8 +295,7 @@ class HeaderFileBuilder extends ClassSourceBuilder {
                         }
                     }
                 }
-                """,
-                retType, paramExprs, traceArgList, returnWithCast, paramList));
+                """, retType, paramExprs, traceArgList, returnWithCast, paramList);
         }
         decrAlign();
     }
@@ -316,14 +313,14 @@ class HeaderFileBuilder extends ClassSourceBuilder {
         // if legacy library loading is selected, load libraries (if any) into current loader
         if (useSystemLoadLibrary) {
             appendBlankLine();
-            appendIndentedLines(String.format("""
+            appendIndentedLines("""
 
             static {
-            """));
+            """);
             incrAlign();
             for (Options.Library lib : libraries) {
                 String method = lib.specKind() == Options.Library.SpecKind.PATH ? "load" : "loadLibrary";
-                appendIndentedLines(String.format("System.%s(\"%s\");", method, lib.toQuotedName()));
+                appendIndentedLines("System.%s(\"%s\");", method, lib.toQuotedName());
             }
             decrAlign();
             appendIndentedLines("""
@@ -403,11 +400,11 @@ class HeaderFileBuilder extends ClassSourceBuilder {
         incrAlign();
         emitDocComment(decl, docHeader);
         Class<?> type = Utils.carrierFor(decl.type());
-        appendLines(String.format("""
-            public static %s %s() {
-                return %s.SEGMENT.get(%s.LAYOUT, 0L);
+        appendLines("""
+            public static %1$s %2$s() {
+                return %3$s.SEGMENT.get(%3$s.LAYOUT, 0L);
             }
-            """, type.getSimpleName(), javaName, holderClass, holderClass));
+            """, type.getSimpleName(), javaName, holderClass);
 
         decrAlign();
     }
@@ -489,17 +486,17 @@ class HeaderFileBuilder extends ClassSourceBuilder {
         incrAlign();
         emitDocComment(varTree, docHeader);
         if (Utils.isStructOrUnion(elemType)) {
-            appendLines(String.format("""
-        public static void %s(%s, MemorySegment varValue) {
-            MemorySegment.copy(varValue, 0L, %s(%s), 0L, %s.byteSize());
-        }
-        """, javaName, indexList.decl(), javaName, indexList.use(), layoutString(elemType)));
+            appendLines(MessageFormat.format("""
+        public static void {0}({1}, MemorySegment varValue) '{'
+            MemorySegment.copy(varValue, 0L, {0}({2}), 0L, {3}.byteSize());
+        '}'
+        """, javaName, indexList.decl(), indexList.use(), layoutString(elemType)));
         } else {
-            appendLines(String.format("""
-        public static void %s(%s, %s varValue) {
-            %s.HANDLE.set(%s.SEGMENT, 0L, %s, varValue);
+            appendLines("""
+        public static void %1$s(%2$s, %3$s varValue) {
+            %4$s.HANDLE.set(%4$s.SEGMENT, 0L, %5$s, varValue);
         }
-        """, javaName, indexList.decl(), typeCls.getSimpleName(), holderClass, holderClass, indexList.use()));
+        """, javaName, indexList.decl(), typeCls.getSimpleName(), holderClass, indexList.use());
         }
         decrAlign();
     }
@@ -519,21 +516,21 @@ class HeaderFileBuilder extends ClassSourceBuilder {
                     "public static final VarHandle HANDLE = LAYOUT.varHandle(" + path + ");\n";
             String dimsString = dimensions.stream().map(Object::toString)
                     .collect(Collectors.joining(", "));
-            appendIndentedLines(String.format("""
+            appendIndentedLines("""
             private static class %s {
                 public static final %s LAYOUT = %s;
                 public static final MemorySegment SEGMENT = %s.findOrThrow("%s").reinterpret(LAYOUT.byteSize());
                 %s
                 public static final long[] DIMS = { %s };
             }
-            """, mangledName, layoutType, layoutString(varType), runtimeHelperName(), lookupName(var), accessHandle, dimsString));
+            """, mangledName, layoutType, layoutString(varType), runtimeHelperName(), lookupName(var), accessHandle, dimsString);
         } else {
-            appendIndentedLines(String.format("""
+            appendIndentedLines("""
             private static class %s {
                 public static final %s LAYOUT = %s;
                 public static final MemorySegment SEGMENT = %s.findOrThrow("%s").reinterpret(LAYOUT.byteSize());
             }
-            """, mangledName, layoutType, layoutString(varType), runtimeHelperName(), lookupName(var)));
+            """, mangledName, layoutType, layoutString(varType), runtimeHelperName(), lookupName(var));
         }
         incrAlign();
         appendBlankLine();

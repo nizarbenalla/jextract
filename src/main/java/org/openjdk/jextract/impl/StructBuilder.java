@@ -216,7 +216,7 @@ final class StructBuilder extends ClassSourceBuilder implements OutputFactory.Bu
         emitFieldDocComment(varTree, "Getter for field:");
         String segmentParam = safeParameterName(kindName());
         appendIndentedLines("""
-            public static MemorySegment %s(MemorySegment %s) {
+            public static MemorySegment %1$s(MemorySegment %2$s) {
                 return %2$s.asSlice(%3$s, %4$s.byteSize());
             }
             """,
@@ -229,8 +229,8 @@ final class StructBuilder extends ClassSourceBuilder implements OutputFactory.Bu
         String segmentParam = safeParameterName(kindName());
         String valueParam = safeParameterName("fieldValue");
         appendIndentedLines("""
-            public static void %s(MemorySegment %s, MemorySegment %s) {
-                MemorySegment.copy(%3$s, 0L, %2$s, %s, %s.byteSize());
+           public static void %1$s(MemorySegment %2$s, MemorySegment %3$s) {
+                MemorySegment.copy(%3$s, 0L, %2$s, %4$s, %5$s.byteSize());
             }
             """,
             javaName, segmentParam, valueParam, offsetField, layoutField);

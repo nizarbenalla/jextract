@@ -415,11 +415,11 @@ class HeaderFileBuilder extends ClassSourceBuilder {
         incrAlign();
         emitDocComment(decl, docHeader);
         Class<?> type = Utils.carrierFor(decl.type());
-        appendLines(String.format("""
-            public static void %s(%s varValue) {
-                %s.SEGMENT.set(%s.LAYOUT, 0L, varValue);
+        appendLines("""
+            public static void %1$s(%2$s varValue) {
+                %3$s.SEGMENT.set(%4$s.LAYOUT, 0L, varValue);
             }
-            """, javaName, type.getSimpleName(), holderClass, holderClass));
+            """, javaName, type.getSimpleName(), holderClass, holderClass);
 
         decrAlign();
     }
@@ -429,11 +429,11 @@ class HeaderFileBuilder extends ClassSourceBuilder {
         appendBlankLine();
         incrAlign();
         emitDocComment(varTree, docHeader);
-        appendLines(String.format("""
+        appendLines("""
             public static MemorySegment %s() {
                 return %s.SEGMENT;
             }
-            """, javaName, holderClass));
+            """, javaName, holderClass);
 
         decrAlign();
     }
@@ -443,11 +443,11 @@ class HeaderFileBuilder extends ClassSourceBuilder {
         appendBlankLine();
         incrAlign();
         emitDocComment(varTree, docHeader);
-        appendLines(String.format("""
+        appendLines("""
             public static void %s(MemorySegment varValue) {
                 MemorySegment.copy(varValue, 0L, %s.SEGMENT, 0L, %s.LAYOUT.byteSize());
             }
-            """, javaName, holderClass, holderClass));
+            """, javaName, holderClass, holderClass);
         decrAlign();
     }
 
@@ -459,15 +459,15 @@ class HeaderFileBuilder extends ClassSourceBuilder {
         incrAlign();
         emitDocComment(varTree, docHeader);
         if (Utils.isStructOrUnion(elemType)) {
-            appendLines(String.format("""
-                public static MemorySegment %s(%s) {
+            appendLines("""
+                public static MemorySegment %1$s(%2$s) {
                     try {
-                        return (MemorySegment)%s.HANDLE.invokeExact(%s.SEGMENT, 0L, %s);
+                        return (MemorySegment)%3$s.HANDLE.invokeExact(%4$s.SEGMENT, 0L, %5$s);
                     } catch (Throwable ex$) {
                         throw new AssertionError("should not reach here", ex$);
                     }
                 }
-                """, javaName, indexList.decl(), holderClass, holderClass, indexList.use()));
+                """, javaName, indexList.decl(), holderClass, holderClass, indexList.use());
         } else {
             appendLines("""
                 public static %1$s %2$s(%3$s) {

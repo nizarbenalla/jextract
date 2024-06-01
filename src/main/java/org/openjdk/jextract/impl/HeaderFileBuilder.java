@@ -469,11 +469,12 @@ class HeaderFileBuilder extends ClassSourceBuilder {
                 }
                 """, javaName, indexList.decl(), holderClass, holderClass, indexList.use()));
         } else {
-            appendLines(String.format("""
-                public static %s %s(%s) {
-                    return (%s)%s.HANDLE.get(%s.SEGMENT, 0L, %s);
+            appendLines("""
+                public static %1$s %2$s(%3$s) {
+                    return (%1$s)%4$s.HANDLE.get(%4$s.SEGMENT, 0L, %5$s);
                 }
-                """, typeCls.getSimpleName(), javaName, indexList.decl(), typeCls.getSimpleName(), holderClass, holderClass, indexList.use()));
+                """, typeCls.getSimpleName(), javaName, indexList.decl(),
+                    holderClass, indexList.use());
         }
         decrAlign();
     }
@@ -517,18 +518,19 @@ class HeaderFileBuilder extends ClassSourceBuilder {
             String dimsString = dimensions.stream().map(Object::toString)
                     .collect(Collectors.joining(", "));
             appendIndentedLines("""
-            private static class %s {
-                public static final %s LAYOUT = %s;
-                public static final MemorySegment SEGMENT = %s.findOrThrow("%s").reinterpret(LAYOUT.byteSize());
-                %s
-                public static final long[] DIMS = { %s };
+            private static class %1$s {
+                public static final %2$s LAYOUT = %3$s;
+                public static final MemorySegment SEGMENT = %4$s.findOrThrow("%5$s").reinterpret(LAYOUT.byteSize());
+                %6$s
+                public static final long[] DIMS = { %7$s };
             }
-            """, mangledName, layoutType, layoutString(varType), runtimeHelperName(), lookupName(var), accessHandle, dimsString);
+            """, mangledName, layoutType, layoutString(varType), runtimeHelperName(),
+                    lookupName(var), accessHandle, dimsString);
         } else {
             appendIndentedLines("""
-            private static class %s {
-                public static final %s LAYOUT = %s;
-                public static final MemorySegment SEGMENT = %s.findOrThrow("%s").reinterpret(LAYOUT.byteSize());
+            private static class %1$s {
+                public static final %2$s LAYOUT = %3$s;
+                public static final MemorySegment SEGMENT = %4$s.findOrThrow("%5$s").reinterpret(LAYOUT.byteSize());
             }
             """, mangledName, layoutType, layoutString(varType), runtimeHelperName(), lookupName(var));
         }

@@ -190,7 +190,7 @@ final class StructBuilder extends ClassSourceBuilder implements OutputFactory.Bu
         appendBlankLine();
         emitFieldDocComment(varTree, "Getter for field:");
         appendIndentedLines("""
-            public static %s %s(MemorySegment %s) {
+            public static %1$s %2$s(MemorySegment %3$s) {
                 return %3$s.get(%4$s, %5$s);
             }
             """,
@@ -204,7 +204,7 @@ final class StructBuilder extends ClassSourceBuilder implements OutputFactory.Bu
         appendBlankLine();
         emitFieldDocComment(varTree, "Setter for field:");
         appendIndentedLines("""
-            public static void %s(MemorySegment %s, %s %s) {
+            public static void %1$s(MemorySegment %2$s, %3$s %4$s) {
                 %2$s.set(%5$s, %6$s, %4$s);
             }
             """,

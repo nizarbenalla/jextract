@@ -72,8 +72,8 @@ final class FunctionalInterfaceBuilder extends ClassSourceBuilder {
             /**
              * The function pointer signature, expressed as a functional interface
              */
-            public interface %s {
-                %s apply(%s);
+            public interface %1$s {
+                %2$s apply(%3$s);
             }
             """,
             fiName, methodType.returnType().getSimpleName(), paramExprs());
@@ -83,7 +83,7 @@ final class FunctionalInterfaceBuilder extends ClassSourceBuilder {
     private void emitFunctionalFactory(String fiName) {
         appendIndentedLines("""
 
-            private static final MethodHandle UP$MH = %s.upcallHandle(%s.%s.class, "apply", $DESC);
+            private static final MethodHandle UP$MH = %1$s.upcallHandle(%2$s.%3$s.class, "apply", $DESC);
 
             /**
              * Allocates a new upcall stub, whose implementation is defined by {@code fi}.
@@ -107,9 +107,9 @@ final class FunctionalInterfaceBuilder extends ClassSourceBuilder {
             /**
              * Invoke the upcall stub {@code funcPtr}, with given parameters
              */
-            public static %s invoke(MemorySegment funcPtr%s%s) {
+            public static %1$s invoke(MemorySegment funcPtr%2$s%3$s) {
                 try {
-                    %s DOWN$MH.invokeExact(funcPtr%s%s);
+                    %4$s DOWN$MH.invokeExact(funcPtr%5$s%6$s);
                 } catch (Throwable ex$) {
                     throw new AssertionError("should not reach here", ex$);
                 }

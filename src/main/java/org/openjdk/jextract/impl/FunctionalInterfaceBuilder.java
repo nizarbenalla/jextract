@@ -173,7 +173,6 @@ final class FunctionalInterfaceBuilder extends ClassSourceBuilder {
             public static FunctionDescriptor descriptor() {
                 return $DESC;
             }
-            """,
-            functionDescriptorString(0, funcType));
+            """, functionDescriptorString(0, funcType));
     }
 }

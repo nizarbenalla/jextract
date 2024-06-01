@@ -272,8 +272,8 @@ final class StructBuilder extends ClassSourceBuilder implements OutputFactory.Bu
                 public static %1$s %2$s(MemorySegment %3$s, %4$s) {
                     return (%1$s)%5$s.get(%3$s, 0L, %6$s);
                 }
-                """, elemTypeCls.getSimpleName(), javaName, segmentParam,
-                     indexList.decl(), arrayElementHandle, indexList.use());
+                """, elemTypeCls.getSimpleName(), javaName, segmentParam
+                   ,indexList.decl(), arrayElementHandle, indexList.use());
         }
     }
 
@@ -289,15 +289,15 @@ final class StructBuilder extends ClassSourceBuilder implements OutputFactory.Bu
                 public static void %1$s(MemorySegment %2$s, %3$s, MemorySegment %4$s) {
                     MemorySegment.copy(%4$s, 0L, %1$s(%2$s, %5$s), 0L, %6$s.byteSize());
                 }
-                """, javaName, segmentParam, indexList.decl(),
-                valueParam, indexList.use(), layoutString(elemType));
+                """, javaName, segmentParam, indexList.decl()
+                   ,valueParam, indexList.use(), layoutString(elemType));
         } else {
             appendIndentedLines("""
                 public static void %1$s(MemorySegment %2$s, %3$s, %4$s %5$s) {
                     %6$s.set(%2$s, 0L, %7$s, %5$s);
                 }
-                """, javaName, segmentParam, indexList.decl(), elemTypeCls.getSimpleName(),
-                valueParam, arrayElementHandle, indexList.use());
+                """, javaName, segmentParam, indexList.decl(), elemTypeCls.getSimpleName()
+                   ,valueParam, arrayElementHandle, indexList.use());
         }
     }
 

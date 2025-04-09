@@ -380,6 +380,29 @@ class HeaderFileBuilder extends ClassSourceBuilder {
             """);
     }
 
+    void emitFucntionalInterfaceHelper() {
+        appendIndentedLines("""
+
+            public record Upcall<T>(FunctionDescriptor descriptor, MethodHandle upcall, MethodHandle downcall) {
+                public Upcall(Class<T> clazz, String methodName, FunctionDescriptor descriptor) {
+                    this(
+                            descriptor,
+                            upcallHandle(clazz, methodName, descriptor),
+                            Linker.nativeLinker().downcallHandle(descriptor)
+                    );
+                }
+
+                public static MethodHandle upcallHandle(Class<?> clazz, String method, FunctionDescriptor descriptor) {
+                    try {
+                        return MethodHandles.lookup().findVirtual(clazz, method, descriptor.toMethodType());
+                    } catch (ReflectiveOperationException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+            """);
+    }
+
     private void emitGlobalGetter(String holderClass, String javaName,
                                   Declaration.Variable decl, String docHeader) {
         appendBlankLine();

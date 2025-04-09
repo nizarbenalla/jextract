@@ -65,6 +65,7 @@ class ToplevelBuilder implements OutputFactory.Builder {
         first.emitDefaultConstructor();
         first.emitRuntimeHelperMethods();
         first.emitFirstHeaderPreamble(libs, useSystemLoadLibrary);
+        first.emitFucntionalInterfaceHelper();
         // emit basic primitive types
         first.appendIndentedLines("""
 

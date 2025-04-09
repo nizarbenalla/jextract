@@ -42,7 +42,7 @@ final class FunctionalInterfaceBuilder extends ClassSourceBuilder {
 
     private FunctionalInterfaceBuilder(SourceFileBuilder builder, String className, ClassSourceBuilder enclosing,
                                        String runtimeHelperName, Type.Function funcType, boolean isNested) {
-        super(builder, isNested ? "public static" : "public", Kind.CLASS, className, null, enclosing, runtimeHelperName);
+        super(builder, isNested ? "public static" : "public", Kind.INTERFACE, className, null, enclosing, runtimeHelperName);
         this.parameterNames = funcType.parameterNames().map(NameMangler::javaSafeIdentifiers);
         this.funcType = funcType;
         this.methodType = Utils.methodTypeFor(funcType);
@@ -55,7 +55,6 @@ final class FunctionalInterfaceBuilder extends ClassSourceBuilder {
         fib.appendBlankLine();
         fib.emitDocComment(parentDecl);
         fib.classBegin();
-        fib.emitDefaultConstructor();
         String fiName = fib.emitFunctionalInterface();
         fib.emitDescriptorDecl();
         fib.emitFunctionalFactory(fiName);
@@ -70,11 +69,9 @@ final class FunctionalInterfaceBuilder extends ClassSourceBuilder {
         appendIndentedLines("""
 
             /**
-             * The function pointer signature, expressed as a functional interface
+             * The function pointer signature, expressed as a method
              */
-            public interface %1$s {
-                %2$s apply(%3$s);
-            }
+            %2$s apply(%3$s);
             """,
             fiName, methodType.returnType().getSimpleName(), paramExprs());
         return fiName;
@@ -83,22 +80,14 @@ final class FunctionalInterfaceBuilder extends ClassSourceBuilder {
     private void emitFunctionalFactory(String fiName) {
         appendIndentedLines("""
 
-            static MethodHandle upcallHandle() {
-                try {
-                    return MethodHandles.lookup().findVirtual(%2$s.%3$s.class, "apply", $DESC.toMethodType());
-                } catch (ReflectiveOperationException ex) {
-                    throw new AssertionError(ex);
-                }
-            }
-
-            private static final MethodHandle UP$MH = upcallHandle();
+            %1$s.Upcall<%2$s> UP$MH = new %1$s.Upcall<>(%2$s.class, "apply",$DESC);
 
             /**
              * Allocates a new upcall stub, whose implementation is defined by {@code fi}.
              * The lifetime of the returned segment is managed by {@code arena}
              */
-            public static MemorySegment allocate(%2$s.%3$s fi, Arena arena) {
-                return Linker.nativeLinker().upcallStub(UP$MH.bindTo(fi), $DESC, arena);
+            static MemorySegment allocate(%2$s impl, Arena arena) {
+                return Linker.nativeLinker().upcallStub(UP$MH.upcall().bindTo(impl), UP$MH.descriptor(), arena);
             }
             """, runtimeHelperName(), className(), fiName);
     }
@@ -110,14 +99,12 @@ final class FunctionalInterfaceBuilder extends ClassSourceBuilder {
         String paramStr = methodType.parameterCount() != 0 ? String.format(",%1$s", paramExprs()) : "";
         appendIndentedLines("""
 
-            private static final MethodHandle DOWN$MH = Linker.nativeLinker().downcallHandle($DESC);
-
             /**
              * Invoke the upcall stub {@code funcPtr}, with given parameters
              */
-            public static %1$s invoke(MemorySegment funcPtr%2$s%3$s) {
+            static %1$s invoke(MemorySegment funcPtr%2$s%3$s) {
                 try {
-                    %4$s DOWN$MH.invokeExact(funcPtr%5$s%6$s);
+                    %4$s UP$MH.downcall().invokeExact(funcPtr%5$s%6$s);
                 } catch (Throwable ex$) {
                     throw new AssertionError("should not reach here", ex$);
                 }
@@ -173,12 +160,12 @@ final class FunctionalInterfaceBuilder extends ClassSourceBuilder {
     private void emitDescriptorDecl() {
         appendIndentedLines("""
 
-            private static final FunctionDescriptor $DESC = %1$s;
+            FunctionDescriptor $DESC = %1$s;
 
             /**
              * The descriptor of this function pointer
              */
-            public static FunctionDescriptor descriptor() {
+            static FunctionDescriptor descriptor() {
                 return $DESC;
             }
             """, functionDescriptorString(0, funcType));

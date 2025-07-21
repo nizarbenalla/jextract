@@ -52,13 +52,18 @@ final class StructBuilder extends ClassSourceBuilder implements OutputFactory.Bu
     private final Declaration.Scoped structTree;
     private final Type structType;
     private final Deque<Declaration> nestedAnonDeclarations;
+    private final IncludeHelper includeHelper;
+    private final boolean functionalDispatch;
 
     StructBuilder(SourceFileBuilder builder, String modifiers, String className,
-                  ClassSourceBuilder enclosing, String runtimeHelperName, Declaration.Scoped structTree) {
+                  ClassSourceBuilder enclosing, String runtimeHelperName, Declaration.Scoped structTree,
+                  IncludeHelper includeHelper) {
         super(builder, modifiers, Kind.CLASS, className, null, enclosing, runtimeHelperName);
         this.structTree = structTree;
         this.structType = Type.declared(structTree);
         this.nestedAnonDeclarations = new ArrayDeque<>();
+        this.functionalDispatch = includeHelper.isFunctionalDispatch(builder.className());
+        this.includeHelper = includeHelper;
     }
 
     private String safeParameterName(String paramName) {
@@ -116,7 +121,7 @@ final class StructBuilder extends ClassSourceBuilder implements OutputFactory.Bu
             return this;
         } else {
             StructBuilder builder = new StructBuilder(sourceFileBuilder(), "public static",
-                    JavaName.getOrThrow(tree), this, runtimeHelperName(), tree);
+                    JavaName.getOrThrow(tree), this, runtimeHelperName(), tree, this.includeHelper);
             builder.begin();
             return builder;
         }
@@ -131,7 +136,7 @@ final class StructBuilder extends ClassSourceBuilder implements OutputFactory.Bu
     }
 
     @Override
-    public void addVar(Declaration.Variable varTree) {
+    public void addVar(Variable varTree) {
         String javaName = JavaName.getOrThrow(varTree);
         appendBlankLine();
         String layoutField = emitLayoutFieldDecl(varTree, javaName);
@@ -149,11 +154,49 @@ final class StructBuilder extends ClassSourceBuilder implements OutputFactory.Bu
                 emitFieldArraySetter(javaName, varTree, arrayHandle, indexList);
             }
         } else if (Utils.isPointer(varTree.type()) || Utils.isPrimitive(varTree.type())) {
-            emitFieldGetter(javaName, varTree, layoutField, offsetField);
-            emitFieldSetter(javaName, varTree, layoutField, offsetField);
+            if (functionalDispatch && Utils.isFunctionPointer(varTree.type())) {
+                emitFunctionalConvenience(
+                        javaName,
+                        (Type.Function) ((Type.Delegated) varTree.type()).type(),
+                        varTree
+                );
+            } else {
+                emitFieldGetter(javaName, varTree, layoutField, offsetField);
+                emitFieldSetter(javaName, varTree, layoutField, offsetField);
+            }
         } else {
-            throw new IllegalArgumentException(String.format("Type not supported: %1$s", varTree.type()));
+            throw new IllegalArgumentException("Type not supported: " + varTree.type());
         }
+    }
+
+    private void emitFunctionalConvenience(String javaName,
+                                           Type.Function funcType,
+                                           Declaration.Variable varTree) {
+        String returnType = Utils.carrierFor(funcType.returnType()).getSimpleName();
+        List<Type> params = funcType.argumentTypes();
+
+        String sig = IntStream.range(0, params.size())
+                .mapToObj(i -> Utils.carrierFor(params.get(i)).getSimpleName() + " _x" + i)
+                .collect(Collectors.joining(", "));
+        String args= IntStream.range(0, params.size())
+                .mapToObj(i -> "_x" + i)
+                .collect(Collectors.joining(", "));
+
+        appendBlankLine();
+        incrAlign();
+        emitDocComment(varTree);
+        decrAlign();
+        appendIndentedLines("public static %1$s %2$s(MemorySegment struct%3$s) {",
+                returnType, javaName,
+                sig.isEmpty() ? "" : ", " + sig);
+        incrAlign();
+        appendIndentedLines("MemorySegment fp = %1$s(struct);", javaName);
+        appendIndentedLines("return %1$s.invoke(fp%2$s);",
+                JavaFunctionalInterfaceName.getOrThrow(varTree),
+                args.isEmpty() ? "" : ", " + args);
+        decrAlign();
+        appendIndentedLines("}");
+        appendBlankLine();
     }
 
     private List<String> prefixNamesList() {
@@ -490,7 +533,7 @@ final class StructBuilder extends ClassSourceBuilder implements OutputFactory.Bu
                     offset += fieldSize;
                     size += fieldSize;
                 } else {
-                    size = Math.max(size, ClangSizeOf.getOrThrow(member));
+                    size = Math.max(size, fieldSize);
                 }
             }
         }

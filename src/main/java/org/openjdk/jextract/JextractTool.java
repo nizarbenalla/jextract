@@ -52,25 +52,28 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Simple extraction tool which generates a minimal Java API. Such an API consists mainly of static methods,
- * where for each native function a static method is added which calls the underlying native method handles.
- * Similarly, for struct fields and global variables, static accessors (getter and setter) are generated
- * on top of the underlying memory access var handles. For each struct, a static layout field is generated.
+ * Simple extraction tool which generates a minimal Java API. Such an API
+ * consists mainly of static methods,
+ * where for each native function a static method is added which calls the
+ * underlying native method handles.
+ * Similarly, for struct fields and global variables, static accessors (getter
+ * and setter) are generated
+ * on top of the underlying memory access var handles. For each struct, a static
+ * layout field is generated.
  */
 public final class JextractTool {
 
     public static final boolean DEBUG = Boolean.getBoolean("jextract.debug");
-    private static final boolean isMacOSX =
-            System.getProperty("os.name", "unknown").equals("Mac OS X");
+    private static final boolean isMacOSX = System.getProperty("os.name", "unknown").equals("Mac OS X");
 
     // error codes
-    private static final int SUCCESS       = 0;
-    private static final int FAILURE       = 1;
-    private static final int OPTION_ERROR  = 2;
-    private static final int INPUT_ERROR   = 3;
-    private static final int CLANG_ERROR   = 4;
-    private static final int FATAL_ERROR   = 5;
-    private static final int OUTPUT_ERROR  = 6;
+    private static final int SUCCESS = 0;
+    private static final int FAILURE = 1;
+    private static final int OPTION_ERROR = 2;
+    private static final int INPUT_ERROR = 3;
+    private static final int CLANG_ERROR = 4;
+    private static final int FATAL_ERROR = 5;
+    private static final int OUTPUT_ERROR = 6;
 
     private final Logger logger;
     private final List<String> frameworkPaths;
@@ -79,8 +82,7 @@ public final class JextractTool {
         this.logger = logger;
         frameworkPaths = new ArrayList<>(Arrays.asList(
                 "/System/Library/Frameworks/",
-                "/System/Library/PrivateFrameworks/"
-        ));
+                "/System/Library/PrivateFrameworks/"));
         inferMacOSFrameworkPath().ifPresent(path -> frameworkPaths.add(path.toString()));
     }
 
@@ -89,19 +91,18 @@ public final class JextractTool {
     }
 
     private static String generateTmpSource(List<String> headers) {
-        return headers.stream().
-               map(src -> {
-                    if (isSpecialHeaderName(src)) {
-                        return "#include " + src;
-                    } else {
-                        return "#include \"" + src + "\"";
-                    }
-               }).
-               collect(Collectors.joining("\n"));
+        return headers.stream().map(src -> {
+            if (isSpecialHeaderName(src)) {
+                return "#include " + src;
+            } else {
+                return "#include \"" + src + "\"";
+            }
+        }).collect(Collectors.joining("\n"));
     }
 
     /**
      * Parse input files into a toplevel declaration with given options.
+     * 
      * @param parserOptions options to be passed to the parser.
      * @return a toplevel declaration.
      */
@@ -116,8 +117,8 @@ public final class JextractTool {
     }
 
     public static List<JavaSourceFile> generate(Declaration.Scoped decl, String headerName,
-                                                String targetPkg, List<Options.Library> libs,
-                                                boolean useSystemLoadLibrary) {
+            String targetPkg, List<Options.Library> libs,
+            boolean useSystemLoadLibrary) {
         Options.Builder builder = Options.builder();
         builder.setTargetPackage(targetPkg);
         builder.setUseSystemLoadLibrary(useSystemLoadLibrary);
@@ -126,13 +127,11 @@ public final class JextractTool {
         return generateInternal(decl, headerName, targetPkg, options, Logger.DEFAULT);
     }
 
-
-
     private static List<JavaSourceFile> generateInternal(Declaration.Scoped decl,
-                                                         String headerName,
-                                                         String targetPkg,
-                                                         Options options,
-                                                         Logger logger) {
+            String headerName,
+            String targetPkg,
+            Options options,
+            Logger logger) {
         var transformedDecl = Stream.of(decl)
                 // process phases that add Skips first
                 .map(new IncludeFilter(options.includeHelper)::scan)
@@ -142,15 +141,15 @@ public final class JextractTool {
                 .map(new MissingDepChecker(logger)::scan)
                 .map(new NameMangler(headerName)::scan)
                 .findFirst().get();
-        return logger.hasErrors() ?
-                List.of() :
-                List.of(OutputFactory.generateWrapped(transformedDecl, targetPkg, options.libraries, options.useSystemLoadLibrary,
-                        options.sharedClassName));
+        return logger.hasErrors() ? List.of()
+                : List.of(OutputFactory.generateWrapped(transformedDecl, targetPkg, options));
     }
 
     /**
-     * Write resulting {@link JavaSourceFile} instances into specified destination path.
-     * @param dest the destination path.
+     * Write resulting {@link JavaSourceFile} instances into specified destination
+     * path.
+     * 
+     * @param dest  the destination path.
      * @param files the {@link JavaSourceFile} instances to be written.
      */
     public static void write(Path dest, List<JavaSourceFile> files) throws IOException {
@@ -206,7 +205,6 @@ public final class JextractTool {
         System.exit(m.run(args));
     }
 
-
     // Option handling code
 
     // specification for an option
@@ -215,6 +213,7 @@ public final class JextractTool {
 
     private static class OptionException extends RuntimeException {
         private static final long serialVersionUID = -1L;
+
         OptionException(String msg) {
             super(msg);
         }
@@ -242,7 +241,7 @@ public final class JextractTool {
 
         String valueOf(String name) {
             var values = valuesOf(name);
-            return values == null? null : values.get(values.size() - 1);
+            return values == null ? null : values.get(values.size() - 1);
         }
 
         List<String> nonOptionArguments() {
@@ -295,59 +294,59 @@ public final class JextractTool {
             Map<String, List<String>> options = new HashMap<>();
             List<String> nonOptionArgs = new ArrayList<>();
             for (int i = 0; i < args.length; i++) {
-               String arg = args[i];
-               // does this look like an option?
-               if (isOption(arg)) {
-                   OptionSpec spec = optionSpecs.get(arg);
-                   String argValue = null;
-                   // does not match known options directly.
-                   // check for single char option followed
-                   // by option value without whitespace in between.
-                   // Examples: -lclang, -DFOO
-                   if (spec == null) {
-                       spec = isSingleCharOptionWithArg(arg) ? optionSpecs.get(singleCharOption(arg)) : null;
-                       // we have a matching single char option and that requires argument
-                       if (spec != null && spec.argRequired()) {
-                           argValue = singleCharOptionArg(arg);
-                       } else {
-                           // single char option special handling also failed. give up.
-                           throw new OptionException("invalid option: " + arg);
-                       }
-                   }
-                   // handle argument associated with the current option, if any
-                   List<String> values;
-                   if (spec.argRequired()) {
-                       if (argValue == null) {
-                           if (i == args.length - 1) {
-                               throw new OptionException(spec.help());
-                           }
-                           argValue = args[i + 1];
-                           i++; // consume value from next command line arg
-                       } // else -DFOO like case. argValue already set
+                String arg = args[i];
+                // does this look like an option?
+                if (isOption(arg)) {
+                    OptionSpec spec = optionSpecs.get(arg);
+                    String argValue = null;
+                    // does not match known options directly.
+                    // check for single char option followed
+                    // by option value without whitespace in between.
+                    // Examples: -lclang, -DFOO
+                    if (spec == null) {
+                        spec = isSingleCharOptionWithArg(arg) ? optionSpecs.get(singleCharOption(arg)) : null;
+                        // we have a matching single char option and that requires argument
+                        if (spec != null && spec.argRequired()) {
+                            argValue = singleCharOptionArg(arg);
+                        } else {
+                            // single char option special handling also failed. give up.
+                            throw new OptionException("invalid option: " + arg);
+                        }
+                    }
+                    // handle argument associated with the current option, if any
+                    List<String> values;
+                    if (spec.argRequired()) {
+                        if (argValue == null) {
+                            if (i == args.length - 1) {
+                                throw new OptionException(spec.help());
+                            }
+                            argValue = args[i + 1];
+                            i++; // consume value from next command line arg
+                        } // else -DFOO like case. argValue already set
 
-                       // do not allow argument value to start with '-'
-                       // this will catch issues like "-l-lclang", "-l -t"
-                       if (argValue.charAt(0) == '-') {
-                           throw new OptionException(spec.help());
-                       }
-                       values = options.getOrDefault(spec.name(), new ArrayList<>());
-                       values.add(argValue);
-                   } else {
-                       // no argument value associated with this option.
-                       // using empty list to flag that.
-                       values = List.of();
-                   }
+                        // do not allow argument value to start with '-'
+                        // this will catch issues like "-l-lclang", "-l -t"
+                        if (argValue.charAt(0) == '-') {
+                            throw new OptionException(spec.help());
+                        }
+                        values = options.getOrDefault(spec.name(), new ArrayList<>());
+                        values.add(argValue);
+                    } else {
+                        // no argument value associated with this option.
+                        // using empty list to flag that.
+                        values = List.of();
+                    }
 
-                   // set value for the option as well as all its aliases
-                   // so that option lookup, value lookup will work regardless
-                   // which alias was used to check.
-                   options.put(spec.name(), values);
-                   for (String _ : spec.aliases()) {
-                       options.put(spec.name(), values);
-                   }
-               } else { // !isOption(arg)
-                   nonOptionArgs.add(arg);
-               }
+                    // set value for the option as well as all its aliases
+                    // so that option lookup, value lookup will work regardless
+                    // which alias was used to check.
+                    options.put(spec.name(), values);
+                    for (String _ : spec.aliases()) {
+                        options.put(spec.name(), values);
+                    }
+                } else { // !isOption(arg)
+                    nonOptionArgs.add(arg);
+                }
             }
             return new OptionSet(options, nonOptionArgs);
         }
@@ -440,7 +439,8 @@ public final class JextractTool {
 
         for (IncludeHelper.IncludeKind includeKind : IncludeHelper.IncludeKind.values()) {
             if (optionSet.has("--" + includeKind.optionName())) {
-                optionSet.valuesOf("--" + includeKind.optionName()).forEach(p -> builder.addIncludeSymbol(includeKind, p));
+                optionSet.valuesOf("--" + includeKind.optionName())
+                        .forEach(p -> builder.addIncludeSymbol(includeKind, p));
             }
         }
 
@@ -458,7 +458,7 @@ public final class JextractTool {
 
         boolean useSystemLoadLibrary = optionSet.has("--use-system-load-library");
         if (useSystemLoadLibrary) {
-            if (!optionSet.has("-l")){
+            if (!optionSet.has("-l")) {
                 logger.warn("jextract.no.library.specified");
             }
             builder.setUseSystemLoadLibrary(true);
@@ -474,10 +474,12 @@ public final class JextractTool {
         inferMacOSFrameworkPath().ifPresent(platformPath -> builder.addClangArg("-F" + platformPath));
 
         int optionError = parseLibraries("l", optionSet, useSystemLoadLibrary, builder);
-        if (optionError != 0) return optionError;
+        if (optionError != 0)
+            return optionError;
 
         optionError = parseLibraries("framework", optionSet, useSystemLoadLibrary, builder);
-        if (optionError != 0) return optionError;
+        if (optionError != 0)
+            return optionError;
 
         String targetPackage = optionSet.has("-t") ? optionSet.valueOf("-t") : "";
         builder.setTargetPackage(targetPackage);
@@ -515,8 +517,7 @@ public final class JextractTool {
                 System.out.println(toplevel);
             }
             files = generateInternal(
-                    toplevel, headerName, targetPackage, options, logger
-            );
+                    toplevel, headerName, targetPackage, options, logger);
 
             if (logger.hasClangErrors()) {
                 return CLANG_ERROR;
@@ -543,21 +544,16 @@ public final class JextractTool {
             return FATAL_ERROR;
         }
 
-        return logger.hasErrors() ?
-                FAILURE :
-                SUCCESS;
+        return logger.hasErrors() ? FAILURE : SUCCESS;
     }
 
-    private int parseLibraries(String optionString, OptionSet optionSet, boolean useSystemLoadLibrary, Options.Builder builder) {
-        String cmdOption = optionString.length() < 3 ?
-                "-" + optionString :
-                "--" + optionString;
+    private int parseLibraries(String optionString, OptionSet optionSet, boolean useSystemLoadLibrary,
+            Options.Builder builder) {
+        String cmdOption = optionString.length() < 3 ? "-" + optionString : "--" + optionString;
         if (optionSet.has(cmdOption)) {
             for (String lib : optionSet.valuesOf(cmdOption)) {
                 try {
-                    String spec = cmdOption.equals("--framework") ?
-                            resolveFrameworkPath(lib) :
-                            lib;
+                    String spec = cmdOption.equals("--framework") ? resolveFrameworkPath(lib) : lib;
 
                     if (spec == null) {
                         throw new IllegalArgumentException("Cannot find framework: " + lib);
@@ -586,7 +582,8 @@ public final class JextractTool {
      * ToolProvider implementation for jextract tool.
      */
     public static class JextractToolProvider implements ToolProvider {
-        public JextractToolProvider() {}
+        public JextractToolProvider() {
+        }
 
         @Override
         public String name() {
@@ -609,8 +606,7 @@ public final class JextractTool {
     }
 
     private static String getMacOsSDKPath() throws IOException {
-        ProcessBuilder pb = new ProcessBuilder().
-                command("/usr/bin/xcrun", "--show-sdk-path");
+        ProcessBuilder pb = new ProcessBuilder().command("/usr/bin/xcrun", "--show-sdk-path");
         return new String(pb.start().getInputStream().readAllBytes());
     }
 

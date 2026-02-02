@@ -44,13 +44,10 @@ public class OutputFactory implements Declaration.Visitor<Void, Declaration> {
     protected Builder currentBuilder;
 
     public static JavaSourceFile[] generateWrapped(Declaration.Scoped decl,
-                                                   String pkgName,
-                                                   List<Options.Library> libs,
-                                                   boolean useSystemLoadLibrary,
-                                                   String sharedClassName) {
+            String pkgName,
+            Options options) {
         String clsName = JavaName.getOrThrow(decl);
-        ToplevelBuilder toplevelBuilder = new ToplevelBuilder(pkgName, clsName,
-                libs, useSystemLoadLibrary, sharedClassName);
+        ToplevelBuilder toplevelBuilder = new ToplevelBuilder(pkgName, clsName, options);
         return new OutputFactory(toplevelBuilder).generate(decl);
     }
 
@@ -60,7 +57,7 @@ public class OutputFactory implements Declaration.Visitor<Void, Declaration> {
     }
 
     JavaSourceFile[] generate(Declaration.Scoped decl) {
-        //generate all decls
+        // generate all decls
         decl.members().forEach(this::generateDecl);
         List<JavaSourceFile> files = new ArrayList<>(toplevelBuilder.toFiles());
         return files.toArray(JavaSourceFile[]::new);
@@ -129,7 +126,7 @@ public class OutputFactory implements Declaration.Visitor<Void, Declaration> {
         // return type could be a function pointer type
         Type.Function returnFunc = Utils.getAsFunctionPointer(funcTree.type().returnType());
         if (returnFunc != null) {
-             generateFunctionalInterface(funcTree, returnFunc);
+            generateFunctionalInterface(funcTree, returnFunc);
         }
 
         toplevelBuilder.addFunction(funcTree);
@@ -149,7 +146,8 @@ public class OutputFactory implements Declaration.Visitor<Void, Declaration> {
             if (!structOrUnionDecl.name().isEmpty() ||
                     !NestedDeclarations.get(tree).orElse(List.of()).contains(structOrUnionDecl)) {
                 // Only generate a typedef class if (a) struct/union name is non-empty,
-                // or if (b) the declaration of the struct/union is not nested inside this typedef,
+                // or if (b) the declaration of the struct/union is not nested inside this
+                // typedef,
                 // which indicates a typedef of some other typedef.
                 toplevelBuilder.addTypedef(tree, JavaName.getFullNameOrThrow(structOrUnionDecl));
             }
@@ -159,7 +157,7 @@ public class OutputFactory implements Declaration.Visitor<Void, Declaration> {
             Type.Function func = Utils.getAsFunctionPointer(type);
             if (func != null) {
                 generateFunctionalInterface(tree, func);
-            } else if (((TypeImpl)type).isPointer()) {
+            } else if (((TypeImpl) type).isPointer()) {
                 toplevelBuilder.addTypedef(tree, null);
             } else {
                 Type.Primitive primitive = Utils.getAsSignedOrUnsigned(type);
